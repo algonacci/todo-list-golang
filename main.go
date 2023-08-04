@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -124,6 +125,11 @@ func deleteTodo(c echo.Context) error {
 	})
 }
 
+func LoadMiddlewares(e *echo.Echo) {
+	e.Use(middleware.CORSWithConfig(
+		middleware.CORSConfig{AllowOrigins: []string{"*"}}))
+}
+
 func main() {
 	e := echo.New()
 
@@ -134,6 +140,8 @@ func main() {
 			return next(c)
 		}
 	})
+
+	LoadMiddlewares(e)
 
 	e.GET("/", index)
 	e.POST("/todos", createTodo)
