@@ -10,7 +10,7 @@ import (
 
 type Todo struct {
 	gorm.Model
-	Title       string `json:"title"`
+	Title       string `json:"title" gorm:"unique"`
 	Description string `json:"description"`
 	Completed   bool   `json:"completed"`
 }
@@ -38,6 +38,14 @@ func createTodo(c echo.Context) error {
 	if err := c.Bind(todo); err != nil {
 		return err
 	}
+
+	var existingTodo Todo
+	if err := db.Where("title = ?", todo.Title).First(&existingTodo).Error; err == nil {
+		return c.JSON(http.StatusConflict, map[string]interface{}{
+			"error": "Todo with the same title already exists",
+		})
+	}
+
 	result := db.Create(&todo)
 	if result.Error != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
@@ -45,6 +53,7 @@ func createTodo(c echo.Context) error {
 			"message": result.Error,
 		})
 	}
+
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"status": map[string]interface{}{
 			"code":    200,
