@@ -63,6 +63,67 @@ func createTodo(c echo.Context) error {
 	})
 }
 
+func getTodos(c echo.Context) error {
+	db := c.Get("db").(*gorm.DB)
+	var todos []Todo
+	db.Find(&todos)
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"status": map[string]interface{}{
+			"code":     200,
+			"messages": "Success fetching all todo list!",
+		},
+		"data": todos,
+	})
+}
+
+func updateTodo(c echo.Context) error {
+	db := c.Get("db").(*gorm.DB)
+	id := c.Param("id")
+
+	var todo Todo
+	result := db.First(&todo, id)
+	if result.Error != nil {
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"error": "Todo not found",
+		})
+	}
+
+	if err := c.Bind(&todo); err != nil {
+		return err
+	}
+
+	db.Save(&todo)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"status": map[string]interface{}{
+			"code":    200,
+			"message": "Todo updated successfully!",
+		},
+	})
+}
+
+func deleteTodo(c echo.Context) error {
+	db := c.Get("db").(*gorm.DB)
+	id := c.Param("id")
+
+	var todo Todo
+	result := db.First(&todo, id)
+	if result.Error != nil {
+		return c.JSON(http.StatusNotFound, map[string]interface{}{
+			"error": "Todo not found",
+		})
+	}
+
+	db.Delete(&todo)
+
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"status": map[string]interface{}{
+			"code":    200,
+			"message": "Todo deleted successfully!",
+		},
+	})
+}
+
 func main() {
 	e := echo.New()
 
@@ -75,6 +136,10 @@ func main() {
 	})
 
 	e.GET("/", index)
-	e.POST("/todo", createTodo)
+	e.POST("/todos", createTodo)
+	e.GET("/todos", getTodos)
+	e.PUT("/todos/:id", updateTodo)
+	e.DELETE("/todos/:id", deleteTodo)
+
 	e.Logger.Fatal(e.Start(":8080"))
 }
