@@ -8,6 +8,13 @@ import (
 	"gorm.io/gorm"
 )
 
+type Todo struct {
+	gorm.Model
+	Title       string `json:"title"`
+	Description string `json:"description"`
+	Completed   bool   `json:"completed"`
+}
+
 func index(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]interface{}{
 		"status": map[string]interface{}{
@@ -25,8 +32,40 @@ func connectDB(dbAddress string) *gorm.DB {
 	return db
 }
 
+func createTodo(c echo.Context) error {
+	db := c.Get("db").(*gorm.DB)
+	todo := new(Todo)
+	if err := c.Bind(todo); err != nil {
+		return err
+	}
+	result := db.Create(&todo)
+	if result.Error != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]interface{}{
+			"error":   "Failed to create todo",
+			"message": result.Error,
+		})
+	}
+	return c.JSON(http.StatusOK, map[string]interface{}{
+		"status": map[string]interface{}{
+			"code":    200,
+			"message": "Todo created successfully",
+		},
+		"data": todo,
+	})
+}
+
 func main() {
 	e := echo.New()
+
+	db := connectDB("root:@tcp(127.0.0.1:3306)/todolist?parseTime=true")
+	e.Use(func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			c.Set("db", db)
+			return next(c)
+		}
+	})
+
 	e.GET("/", index)
+	e.POST("/todo", createTodo)
 	e.Logger.Fatal(e.Start(":8080"))
 }
